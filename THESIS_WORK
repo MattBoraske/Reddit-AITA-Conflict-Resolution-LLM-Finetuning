@@ -1,0 +1,36 @@
+THESIS WORK
+
+1. Send RCA abstract to Chen/Burns/Bhuiyan
+
+1. Update raw data file filtering script
+	- Update dataset_creation README.md to include explanation on  how to replicate dataset creation using raw dumps
+
+2. Update comments in dataset processing script
+
+3. Write token analysis notebook
+
+4. Write fine-tuning notebooks and scripts
+
+5. Fine-tune models
+
+6. Write evalution notebooks (ROGUE, classification metrics, BLEURT)
+
+7. Make skeleton of paper
+
+8. Start compiling research for introduction and background research sections
+
+9. Write introduction
+
+10. Write background and related work
+
+11. Write dataset creation section
+
+12. Models trained by now - evaluate them
+
+12. Write results section of paper
+
+13. Make skeleton for poster
+
+14. Write discussion section for paper
+
+15. Make poster
