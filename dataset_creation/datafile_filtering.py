@@ -9,60 +9,114 @@ import logging.handlers
 ########################
 # FILTERING PARAMETERS #
 ########################
-##  input file
-#input_file = r"base-dumps\base-dumps\AmItheAsshole_comments.zst"
+# input file - string with the path to the file to be processed
+input_file = None # defaults to None
 
-##  output file. the file extension from below will be added automatically
-#output_file = r"comments_2019_to_2022_at_least_10_score"
+# output file - string with the path to the file to be written
+output_file = None # defaults to None 
 
-##  output file extension: 3 options
-##      zst: same as the input, a zstandard compressed ndjson file. Can be read by the other scripts in the repo
-##      txt: an ndjson file, which is a text file with a separate json object on each line. Can be opened by any text editor
-##      csv: a comma separated value file. Can be opened by a text editor or excel
-#output_format = "zst"
+# output_format - output file extension. 3 options:
+#  zst: same as the input, a zstandard compressed ndjson file. Can be read by the other scripts in the repo
+#  txt: an ndjson file, which is a text file with a separate json object on each line. Can be opened by any text editor
+#  csv: a comma separated value file. Can be opened by a text editor or excel
 
-##  option to override the above format and output only a single field into a text file, one per line. Use to make lists of IDs
-##     id: the id of the submission or comment
-##     link_id: only for comments, the fullname of the submission the comment is associated with
-##     parent_id: only for comments, the fullname of the parent of the comment. Either another comment or the submission if it's top level
-#single_field = None
+#  single_field - option to override the above format and output only a single field into a text file, one per line. Use to make lists of IDs. Reddit AITA Examples:
+#   id: the id of the submission or comment
+#   link_id: only for comments, the fullname of the submission the comment is associated with
+#   parent_id: only for comments, the fullname of the parent of the comment. Either another comment or the submission if it's top level
+single_field = None  # defaults to None
+min_score = float('-inf') # defaults to negative infinity
+max_score = float('inf') # defaults to positive infinity
 
-##  option to write out to the log every time there's a bad line, set to false if expecting only some lines to match the key
+# write_bad_lines - option to write out to the log every time there's a bad line, set to false if expecting only some lines to match the key
+write_bad_lines = False # defaults to False
+
+# date_filtering - option to filter by date range
+# from_date, to_date - datetime objects for the start and end of the date range. Must set date_filtering to True to use
+date_filtering = False # defaults to False
+from_date = None # defaults to None
+to_date = None # defaults to None
+
+# score_filtering - option to filter by score range
+# min_score, max_score - integers for the minimum and maximum score. Must set score_filtering to True to use
+score_filtering = False # defaults to False
+
+# field - the field to filter on.
+field = None # defaults to None
+
+# values - list of values to filter the field on. If exact_match is False, the field must contain the value to match
+values = [''] # defaults to an empty list
+# values_file - file input if values list is long (ex. a .txt containing a list of submission IDs)
+values_file = None # defaults to None
+
+# exact_match - match if similar (field contains the value) or exact (field is exactly the value)
+exact_match = False # defaults to False
+
+
+###############################################################
+# STEPS TO GET TOP-LEVEL COMMENTS OUTPUT FILE FOR SUBMISSIONS #
+###############################################################
+# optional filtering on submission and comment scores, as well as a date range, is demonstrated
+# for each step, comment and uncomment out the parameters it sets
+
+'''
+# parameters that are consistent between four steps
+from_date, to_date = datetime.strptime("2019-01-01", "%Y-%m-%d"), datetime.strptime("2023-01-01", "%Y-%m-%d") # filter for submissions and comments from 2019 to 2022
+max_score = 1000000 # set max score an impossibly high value for reddit AITA submission and comment scores to negate limit
 write_bad_lines = False
 
-##  from/to date filters
-date_filtering = False
-from_date = datetime.strptime("2019-01-01", "%Y-%m-%d")
-to_date = datetime.strptime("2023-01-01", "%Y-%m-%d")
-
-##  min/max score filters
-score_filtering = False
-min_score = 10
-max_score = 1000000 # impossibly high to negate limit
-
-## BASE DRIVER CONFIG ##
-#field = None # field to filter on
-#values = [''] # values to filter the filed on
-#values_file = None # file input if values list is long (ex. a .txt containing a list of submission IDs)
-#exact_match = False # match if similar (field contains the value) or exact (field is exactly the value)
-
-### STEPS TO GET SUBMISSIONS AND RESPECTIVE TOP-LEVEL COMMENTS OUTPUT FILE ###
-## 1. Get a filtered submissions .zst
-#
-## 2. Use the filtered submissions .zst as input for another run of the script we'll run the script again with the same input and filters, but set the output to single field.
-#input_file = "submissions_2019_to_2022_above_50_score.zst"
-#output_file = "submissions_2019_to_2022_above_50_score_ids"
-#single_field = "id"
-#
-# 3. Remove all the other filters and update the script to input from the comments file, and use the submission ids list we created before as the values list filter.
-input_file = "new_datasets\comments_2019_to_2022_at_least_10_score.zst"
-output_file = "new_datasets\\top_level_comments_2019_to_2022_at_least_10_comment_score_at_least_50_submission_score"
+# Step 1. Get a filtered submissions .zst: In this case, submissions with a score of at least 50
+## I/O files
+input_file = "raw-dumps\AmItheAsshole_submissions.zst" # get AITA submission and comment raw dumps here - https://drive.google.com/drive/folders/1N9DPb5sGxlDE1EQM6X6vJ1ejGplxP4ez?usp=sharing
+output_file = "submissions_2019_to_2022_at_least_50_score"
 output_format = "zst"
-single_field = None  # resetting this back so it's not used
+## filters
+score_filtering = True
+min_score = 50
+field = None # field to filter on
+values = [''] # values to filter the field on
+values_file = None # file input if values list is long (ex. a .txt containing a list of submission IDs)
+exact_match = False # match if similar (field contains the value) or exact (field is exactly the value)
+
+# Step 2. Get a list of submission IDs: Use the filtered submissions .zst as input for another run of the script with the same input and filters, but set the output to single field.
+## I/O files
+input_file = "submissions_2019_to_2022_at_least_50_score.zst"
+output_file = "submissions_2019_to_2022_at_least_50_score_ids"
+output_format = "txt"
+## filters
+score_filtering = False
+single_field = "id"
+
+# Step 3. Get a filtered comments .zst: In this case, comments with a score of at least 10
+## I/O files
+input_file = "raw-dumps\AmItheAsshole_comments.zst"
+output_file = "comments_2019_to_2022_at_least_10_score"
+output_format = "zst"
+## filters
+score_filtering = True
+min_score = 10
+field = None # field to filter on
+values = [''] # values to filter the field on
+values_file = None # file input if values list is long (ex. a .txt containing a list of submission IDs)
+exact_match = False # match if similar (field contains the value) or exact (field is exactly the value)
+
+# 4. Get submissions with their top-level comments: input is the comments file, and use the submission ids list ceated in Step #2 as the values list filter.
+## I/O files
+input_file = "comments_2019_to_2022_at_least_10_score.zst"
+output_file = "top_level_comments_2019_to_2022_at_least_10_comment_score_at_least_50_submission_score"
+output_format = "zst"
+## filters
+score_filtering = False
 field = "parent_id"  # in the comment object, this is the field that contains the submission id. if you want only top level comments instead of all comments, you can set this to "parent_id" instead of "link_id"
 values_file = "new_datasets\submissions_2019_to_2022_at_least_50_score_ids.txt"
 values = [""]
 exact_match = False  # the link_id field has a prefix on it, so we can't do an exact match
+'''
+
+
+##################
+# FILTERING CODE #
+##################
 
 # logging configuration
 log = logging.getLogger("bot")
@@ -77,7 +131,6 @@ log_file_handler = logging.handlers.RotatingFileHandler(os.path.join("logs", "bo
 log_file_handler.setFormatter(log_formatter)
 log.addHandler(log_file_handler)
 
-
 def write_line_zst(handle, line):
 	"""
     Writes a line to a file handle in zstd-compressed format.
@@ -89,7 +142,6 @@ def write_line_zst(handle, line):
 	handle.write(line.encode('utf-8'))
 	handle.write("\n".encode('utf-8'))
 
-
 def write_line_json(handle, obj):
     """
     Writes a JSON object to a file handle as a JSON-formatted string.
@@ -100,7 +152,6 @@ def write_line_json(handle, obj):
     """
     handle.write(json.dumps(obj))
     handle.write("\n")
-
 
 def write_line_single(handle, obj, field):
 	"""
@@ -116,7 +167,6 @@ def write_line_single(handle, obj, field):
 	else:
 		log.info(f"{field} not in object {obj['id']}")
 	handle.write("\n")
-
 
 def write_line_csv(writer, obj, is_submission):
 	"""
@@ -146,7 +196,6 @@ def write_line_csv(writer, obj, is_submission):
 		output_list.append(obj['body'])
 	writer.writerow(output_list)
 
-
 def read_and_decode(reader, chunk_size, max_window_size, previous_chunk=None, bytes_read=0):
 	"""
     Reads and decodes a chunk of data from a reader object, handling UnicodeDecodeError.
@@ -173,7 +222,6 @@ def read_and_decode(reader, chunk_size, max_window_size, previous_chunk=None, by
 		log.info(f"Decoding error with {bytes_read:,} bytes, reading another chunk")
 		return read_and_decode(reader, chunk_size, max_window_size, chunk, bytes_read)
 
-
 def read_lines_zst(file_name):
 	"""
     Generator function to read and yield lines from a zstd-compressed file.
@@ -196,7 +244,6 @@ def read_lines_zst(file_name):
 				yield line.strip(), file_handle.tell()
 			buffer = lines[-1]
 		reader.close()
-
 
 def process_file(input_file, output_file, output_format, field, values, from_date, to_date, single_field, exact_match):
 	"""
