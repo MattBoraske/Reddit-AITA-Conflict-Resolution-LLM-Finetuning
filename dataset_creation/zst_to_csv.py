@@ -1,10 +1,11 @@
 # script that converts a .zst into a .csv
 # arguments: inputfile, outputfile, fields
 
-## submissions ##
+# example usages:
+## submissions:
 # python zst_to_csv.py submissions_2019_to_2022_above_50_score_take_2.zst submissions_2019_to_2022_above_50_score_take_2.csv id,link_flair_text,score,title,selftext,url,created_utc
-## comments ##
-# python zst_to_csv.py downloaded_files/output-datasets/top_level_comments_2022_score_50.zst top_level_comments_2022_score_50.csv id,link_id,score,body
+## comments:
+# python zst_to_csv.py top_level_comments_2022_score_50.zst top_level_comments_2022_score_50.csv id,link_id,score,body
 
 import zstandard
 import os
