@@ -2,32 +2,30 @@ THESIS WORK
 
 1. Send RCA abstract to Chen/Burns/Bhuiyan
 
-1. Update raw data file filtering script
-	- Update dataset_creation README.md to include explanation on  how to replicate dataset creation using raw dumps
+1. Update dataset_creation README.md to
+	- include explanation on how to replicate dataset creation using raw dumps and dataset_processing scripts
+	- explains analysis done in data_processing script
+	- explains results in results sub-directory from both dataset processing and analysis
 
-2. Update comments in dataset processing script
+2. Update comments in dataset processing and analysis scripts
 
-3. Re-run Data-Processing code and commit - GET TO HERE
+3. Write fine-tuning notebooks and scripts
 
-3. Write token analysis notebook
+4. Fine-tune models (Clean up huggingface model repositories first)
 
-4. Write fine-tuning notebooks and scripts
+5. Write evalution notebooks (ROGUE, classification metrics, BLEURT)
 
-5. Fine-tune models
+6. Make skeleton of paper
 
-6. Write evalution notebooks (ROGUE, classification metrics, BLEURT)
+7. Start compiling research for introduction and background research sections
 
-7. Make skeleton of paper
+8. Write introduction
 
-8. Start compiling research for introduction and background research sections
+9. Write background and related work
 
-9. Write introduction
+10. Write dataset creation section
 
-10. Write background and related work
-
-11. Write dataset creation section
-
-12. Models trained by now - evaluate them
+11. Models trained by now - evaluate them
 
 12. Write results section of paper
 
