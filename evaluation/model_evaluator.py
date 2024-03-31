@@ -5,7 +5,7 @@ from sklearn.metrics import confusion_matrix
 from sklearn.metrics import classification_report
 import matplotlib.pyplot as plt
 import seaborn as sns
-import evaluate
+import evaluate # make sure to install extra rogue score and comet dependencies (pip install rouge-score unbabel-comet)
 
 class Model_Evaluator:
     def __init__(self):
@@ -139,11 +139,12 @@ class Model_Evaluator:
         return earliest_match if earliest_match is not None else 'NO CLASS'
     
     @staticmethod
-    def evaluate_model(predictions, references, AITA_classes, correct_AITA_classes, ambiguity_scores, classification_type, output_files, ambiguity_thresholds=[0.0,1.0]):
+    def evaluate_model(submission_texts, predictions, references, AITA_classes, correct_AITA_classes, ambiguity_scores, classification_type, output_files, ambiguity_thresholds=[0.0,1.0]):
         '''
         Evaluate the model predictions.
 
         Args:
+            submission_texts (list): A list of submission texts.
             predictions (list): A list of prediction texts.
             references (list): A list of reference texts.
             AITA_classes (list): A list of predicted AITA classes.
@@ -179,7 +180,8 @@ class Model_Evaluator:
         Model_Evaluator._evaluate_classifications(AITA_classes, correct_AITA_classes, classification_type, classification_output_files)
 
         # evaluate justifications
-        Model_Evaluator._evaluate_justifications(predictions, references, output_files)
+        justification_output_files = output_files[3:]
+        Model_Evaluator._evaluate_justifications(submission_texts, predictions, references, justification_output_files)
 
     def _evaluate_classifications(AITA_classes, correct_AITA_classes, classification_type, output_files):
         '''
@@ -242,19 +244,40 @@ class Model_Evaluator:
             json.dump({'mcc': mcc}, f)
             print('Matthews correlation coefficient written to', output_files[2])
 
-    def _evaluate_justifications(predictions, references, output_files):
+    def _evaluate_justifications(submission_texts, predictions, references, output_files):
         '''
         Evaluate the justification texts.
 
         Args:
+            submission_texts (list): A list of submission texts. (needed for COMET)
             predictions (list): A list of prediction texts.
             references (list): A list of reference texts.
-            output_files (list): A list of file paths to write the results to.
+            output_files (list): A list of file paths to write the results to.\
+                - 0 - string: ROUGE scores file (.json)
+                - 1 - string: BLEU scores file (.json)
+                - 2 - string: COMET scores file (.json)
 
         Returns:
             None - Writes results to output files.
         '''
-        ###########
-        ## TO DO ##
-        ###########
-        pass
+
+        # get ROUGE scores and save them to provided output
+        rouge_metric = evaluate.load("rouge")
+        rouge = rouge_metric.compute(predictions=predictions, references=references)
+
+        with open(output_files[0], 'w') as f:
+            json.dump(rouge, f)
+
+        # get BLEU scores and save them to provided output
+        bleu_metric = evaluate.load("bleu")
+        bleu = bleu_metric.compute(predictions=predictions, references=references)
+
+        with open(output_files[1], 'w') as f:
+            json.dump(bleu, f)
+        
+        # get COMET scores
+        comet_metric = evaluate.load('comet') 
+        comet_score = comet_metric.compute(predictions=predictions, references=references, sources=submission_texts)
+
+        with open(output_files[2], 'w') as f:
+            json.dump(comet_score, f)
