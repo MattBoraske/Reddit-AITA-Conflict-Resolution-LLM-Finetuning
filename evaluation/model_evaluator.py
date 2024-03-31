@@ -67,6 +67,8 @@ class Model_Evaluator:
         Returns:
             tuple: A tuple containing the input text, prediction text, reference text, predicted AITA class, correct AITA class, and ambiguity score.
         '''
+
+        # check if model is flan-t5
         if 'T5ForConditionalGeneration' in model.config.architectures:
             # tokenize input
             input_ids = tokenizer(sample['flanT5_instruction'], max_length=1024, padding='max_length', return_tensors="pt", truncation=True).input_ids.cuda()
@@ -88,11 +90,31 @@ class Model_Evaluator:
             # return tuple of input text, prediction, reference text, predicted AITA class, correct AITA class, and ambiguity score
             print(f'Predicted AITA_classs: {AITA_class}\tCorrect AITA_classs: {correct_AITA_class}')
             return sample['submission_text'], prediction, reference, AITA_class, correct_AITA_class, ambiguity_score
+        
+        # check if model is llama2
         elif 'LlamaForCausalLM' in model.config.architectures:
-            ###########
-            ## TO DO ##
-            ###########
-            pass
+            # tokenize input
+            input_ids = tokenizer(sample['llama2_instruction'], return_tensors="pt").input_ids.cuda()
+
+            # generate and decode prediction
+            outputs = model.generate(input_ids=input_ids)
+            prediction = tokenizer.decode(outputs[0].detach().cpu().numpy(), skip_special_tokens=True)
+
+            # get AITA classification
+            AITA_class = Model_Evaluator._find_earliest_classification(prediction)
+
+            # get reference text and AITA decision
+            reference = sample['top_comment_1']
+            correct_AITA_class = sample['top_comment_1_classification']
+
+            # get ambiguity_score
+            ambiguity_score = sample['ambiguity_score']
+
+            # return tuple of input text, prediction, reference text, predicted AITA class, correct AITA class, and ambiguity score
+            print(f'Predicted AITA_classs: {AITA_class}\tCorrect AITA_classs: {correct_AITA_class}')
+            return sample['submission_text'], prediction, reference, AITA_class, correct_AITA_class, ambiguity_score
+        
+        # raise error if model is not supported
         else:
             raise ValueError("Model must be either 'flan-t5' or 'llama2'") # fix to reflect error properly
 
@@ -152,6 +174,12 @@ class Model_Evaluator:
             ambiguity_scores (list): A list of ambiguity scores.
             classification_type (str): The type of classification to evaluate - either multi or binary
             output_files (list): A list of file paths to write the results to.
+                - 0 - string: classification report file (.txt)
+                - 1 - tuple: confusion matrix plot tile and file (.png)
+                - 2 - string: matthews correlation coefficient file (.json)
+                - 3 - string: ROUGE scores file (.json)
+                - 4 - string: BLEU scores file (.json)
+                - 5 - string: COMET scores file (.json)
             ambiguity_thresholds (list): A two-element list of ambiguity score min and max thresholds to filter predictions on.
 
         Returns:
@@ -171,9 +199,23 @@ class Model_Evaluator:
                     filtered_AITA_classes.append(AITA_classes[i])
                     filtered_correct_AITA_classes.append(correct_AITA_classes[i])
 
-        ############################
-        # ADD AN OUTPUT FILE CHECK #
-        ############################
+        # check if output files are valid
+        if len(output_files) != 6:
+            raise ValueError("Output files must be a list of six file paths.")
+        if not output_files[0].endswith(".txt"):
+            raise ValueError("Output file #1 (classification report) must be a .txt file.")
+        if not isinstance(output_files[1], tuple):
+            raise ValueError("Output file #2 (confusion matrix title and plot) must be a tuple.")
+        if not output_files[1][1].endswith(".png"):
+            raise ValueError("Output file #2 (confusion matrix plot) must be a .png file.")
+        if not output_files[2].endswith(".json"):
+            raise ValueError("Output file #3 (matthews correlation coefficient) must be a .json file.")
+        if not output_files[3].endswith(".json"):
+            raise ValueError("Output file #4 (ROUGE scores) must be a .json file.")
+        if not output_files[4].endswith(".json"):
+            raise ValueError("Output file #5 (BLEU scores) must be a .json file.")
+        if not output_files[5].endswith(".json"):
+            raise ValueError("Output file #6 (COMET scores) must be a .json file.")
 
         # evaluate classifications
         classification_output_files = output_files[:3]
