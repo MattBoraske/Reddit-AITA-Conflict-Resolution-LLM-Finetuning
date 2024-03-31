@@ -1,47 +1,18 @@
-'''
-class Model_Evaluator
-  def get_model_predictions(model, dataset) --> prediction texts, reference texts, predicted AITA classes, correct AITA classes, ambiguity scores
-    def calculate_predictions(model, sample) --> prediction text, reference text, predicted AITA class, correct AITA class, ambiguity score
-    def find_earliest_classification(text) --> AITA_class
-
-    - store results as JSON
-
-  def evaluate_model(predictions, references, AITA_classes, correct_AITA_classes, ambiguity_scores) --> nothing directly, but prints results to output files
-    def evaluate_justifications(predictions, references) --> nothing (output files)
-      - ROGUE
-      - COMET
-      - BLEURT
-    def evaluate_classifications(AITA_classes, correct_AITA_classes) --> nothing (output files)
-      - confusion matrix
-      - classification report
-      - matthew's correlation coefficient
-
-THINGS TO CONSIDER
-  - add ambiguity score filter to evaluate_model
-  - add way to differentiate between flan-t5 and llama-2 model generation ... is there one?
-
-  
-how evaluation flow will go...
-
-- load model and tokenizer
-- load dataset
-- static call to get_model_predictions(model, tokenizer, dataset) --> returns prediction texts, reference texts, predicted AITA classes, correct AITA classes, ambiguity scores
-    - different predictions based off model name (found in model.config)
-        - return error if predictions are attempted to be made for model that isn't flanT5 or llama2
-- static call to evaluate_model(predictions, references, AITA_classes, correct_AITA_classes, ambiguity_scores) --> prints results to output files
-    - include parameter that is a list of output file strings
-
-'''
-
 import json
 import re
+import numpy as np
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import classification_report
+import matplotlib.pyplot as plt
+import seaborn as sns
+import evaluate
 
 class Model_Evaluator:
     def __init__(self):
         pass
 
     @staticmethod
-    def get_model_predictions(self, model, tokenizer, dataset, output_file=None):
+    def get_model_predictions(model, tokenizer, dataset, output_file=None):
         '''
         Generate predictions for a dataset using a model.
 
@@ -55,6 +26,7 @@ class Model_Evaluator:
             tuple: A tuple containing lists of prediction texts, reference texts, predicted AITA classes, correct AITA classes, and ambiguity scores.
         '''
 
+        submission_texts = []
         prediction_texts = []
         reference_texts = []
         predicted_AITA_classes = []
@@ -62,7 +34,8 @@ class Model_Evaluator:
         ambiguity_scores = []
 
         for sample in dataset:
-            prediction_text, reference_text, predicted_AITA_class, correct_AITA_class, ambiguity_score = self._calculate_predictions(model, tokenizer, sample)
+            submission_text, prediction_text, reference_text, predicted_AITA_class, correct_AITA_class, ambiguity_score = Model_Evaluator._calculate_prediction(model, tokenizer, sample)
+            submission_texts.append(submission_text)
             prediction_texts.append(prediction_text)
             reference_texts.append(reference_text)
             predicted_AITA_classes.append(predicted_AITA_class)
@@ -72,6 +45,7 @@ class Model_Evaluator:
         if output_file is not None:
             with open(output_file, 'w') as f:
                 json.dump({
+                    'submission_texts': submission_texts,
                     'prediction_texts': prediction_texts,
                     'reference_texts': reference_texts,
                     'predicted_AITA_classes': predicted_AITA_classes,
@@ -79,9 +53,9 @@ class Model_Evaluator:
                     'ambiguity_scores': ambiguity_scores
                 }, f)
 
-        return prediction_texts, reference_texts, predicted_AITA_classes, correct_AITA_classes, ambiguity_scores
+        return submission_texts, prediction_texts, reference_texts, predicted_AITA_classes, correct_AITA_classes, ambiguity_scores
     
-    def _calculate_predictions(self, model, tokenizer, sample):
+    def _calculate_prediction(model, tokenizer, sample):
         '''
         Generate a prediction for a single sample using a model.
 
@@ -93,7 +67,7 @@ class Model_Evaluator:
         Returns:
             tuple: A tuple containing the input text, prediction text, reference text, predicted AITA class, correct AITA class, and ambiguity score.
         '''
-        if 'T5ForConditionalGeneration' not in model.config.architectures: # FIX LATER
+        if 'T5ForConditionalGeneration' in model.config.architectures:
             # tokenize input
             input_ids = tokenizer(sample['flanT5_instruction'], max_length=1024, padding='max_length', return_tensors="pt", truncation=True).input_ids.cuda()
 
@@ -102,7 +76,7 @@ class Model_Evaluator:
             prediction = tokenizer.decode(outputs[0].detach().cpu().numpy(), skip_special_tokens=True)
 
             # get AITA classification
-            AITA_class = self._find_earliest_classification(prediction)
+            AITA_class = Model_Evaluator._find_earliest_classification(prediction)
 
             # get reference text and AITA decision
             reference = sample['top_comment_1']
@@ -114,9 +88,11 @@ class Model_Evaluator:
             # return tuple of input text, prediction, reference text, predicted AITA class, correct AITA class, and ambiguity score
             print(f'Predicted AITA_classs: {AITA_class}\tCorrect AITA_classs: {correct_AITA_class}')
             return sample['submission_text'], prediction, reference, AITA_class, correct_AITA_class, ambiguity_score
-        elif 'LlamaForCausalLM' not in model.config.architectures: # FIX LATER
+        elif 'LlamaForCausalLM' in model.config.architectures:
+            ###########
             ## TO DO ##
-            print()
+            ###########
+            pass
         else:
             raise ValueError("Model must be either 'flan-t5' or 'llama2'") # fix to reflect error properly
 
@@ -163,7 +139,7 @@ class Model_Evaluator:
         return earliest_match if earliest_match is not None else 'NO CLASS'
     
     @staticmethod
-    def evaluate_model(self, predictions, references, AITA_classes, correct_AITA_classes, ambiguity_scores, output_files, ambiguity_thresholds=[0.0,1.0]):
+    def evaluate_model(predictions, references, AITA_classes, correct_AITA_classes, ambiguity_scores, classification_type, output_files, ambiguity_thresholds=[0.0,1.0]):
         '''
         Evaluate the model predictions.
 
@@ -173,6 +149,7 @@ class Model_Evaluator:
             AITA_classes (list): A list of predicted AITA classes.
             correct_AITA_classes (list): A list of correct AITA classes.
             ambiguity_scores (list): A list of ambiguity scores.
+            classification_type (str): The type of classification to evaluate - either multi or binary
             output_files (list): A list of file paths to write the results to.
             ambiguity_thresholds (list): A two-element list of ambiguity score min and max thresholds to filter predictions on.
 
@@ -193,28 +170,79 @@ class Model_Evaluator:
                     filtered_AITA_classes.append(AITA_classes[i])
                     filtered_correct_AITA_classes.append(correct_AITA_classes[i])
 
+        ############################
+        # ADD AN OUTPUT FILE CHECK #
+        ############################
 
         # evaluate classifications
-        self._evaluate_classifications(AITA_classes, correct_AITA_classes, output_files)
+        classification_output_files = output_files[:3]
+        Model_Evaluator._evaluate_classifications(AITA_classes, correct_AITA_classes, classification_type, classification_output_files)
 
         # evaluate justifications
-        self._evaluate_justifications(predictions, references, output_files)
+        Model_Evaluator._evaluate_justifications(predictions, references, output_files)
 
-    def _evaluate_classifications(self, AITA_classes, correct_AITA_classes, output_files):
+    def _evaluate_classifications(AITA_classes, correct_AITA_classes, classification_type, output_files):
         '''
         Evaluate the AITA classifications.
 
         Args:
             AITA_classes (list): A list of predicted AITA classes.
             correct_AITA_classes (list): A list of correct AITA classes.
+            classification_type (str): The type of classification to evaluate - either multi or binary
             output_files (list): A list of file paths to write the results to.
+                - 0 - string: classification report file (.txt)
+                - 1 - tuple: confusion matrix plot tile and file (.png)
+                - 2 - string: matthews correlation coefficient file (.json)
 
         Returns:
             None - Writes results to output files.
         '''
-        pass
 
-    def _evaluate_justifications(self, predictions, references, output_files):
+        # track samples with no class to mention in results
+        no_class_counter = 0
+
+        # get y_true and y_pred
+        y_true, y_pred = [], []
+        for l1, l2 in zip(AITA_classes, correct_AITA_classes):
+            if l1 != "NO CLASS":
+                y_pred.append(l1)
+                y_true.append(l2)
+            else:
+                no_class_counter += 1
+        print('Predictions with no AITA class:', no_class_counter)
+
+        # get class names for multi or binary classification
+        if classification_type == 'multi':
+            class_names = ['NTA', 'NAH', 'ESH', 'INFO', 'YTA']
+        elif classification_type == 'binary':
+            class_names = ['NTA', 'YTA']
+        else:
+            raise ValueError("Classification type must be either 'multi' or 'binary'")
+        
+        # get classification stats report and save it to provided output
+        classification_metrics = classification_report(y_true, y_pred, labels=class_names)
+        with open(output_files[0], 'w') as f:
+            f.write(classification_metrics)
+            print('Classification report written to', output_files[0])
+
+        # get confusion matrix and save it to provided output
+        cm = confusion_matrix(y_true, y_pred, labels=class_names)
+        plt.figure(figsize=(8, 6))
+        sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", xticklabels=class_names, yticklabels=class_names)
+        plt.title(f'{output_files[1][0]}')
+        plt.xlabel('Predicted')
+        plt.ylabel('True')
+        plt.savefig(f"{output_files[1][1]}.png")
+        print('Confusion matrix plot written to', output_files[1][1])
+
+        # get matthews correlation coefficient and save it to JSON
+        matthews_metric = evaluate.load("matthews_correlation")
+        mcc = matthews_metric.compute(references=[class_names.index(x) for x in y_true], predictions=[class_names.index(x) for x in y_pred])
+        with open(output_files[2], 'w') as f:
+            json.dump({'mcc': mcc}, f)
+            print('Matthews correlation coefficient written to', output_files[2])
+
+    def _evaluate_justifications(predictions, references, output_files):
         '''
         Evaluate the justification texts.
 
@@ -226,4 +254,7 @@ class Model_Evaluator:
         Returns:
             None - Writes results to output files.
         '''
+        ###########
+        ## TO DO ##
+        ###########
         pass
