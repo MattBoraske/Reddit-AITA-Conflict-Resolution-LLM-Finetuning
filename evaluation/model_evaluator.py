@@ -99,6 +99,8 @@ class Model_Evaluator:
             # generate and decode prediction
             outputs = model.generate(input_ids=input_ids)
             prediction = tokenizer.decode(outputs[0].detach().cpu().numpy(), skip_special_tokens=True)
+            inst_end_index = prediction.find('[/INST]') + len('[/INST]')
+            prediction = prediction[inst_end_index:].strip()
 
             # get AITA classification
             AITA_class = Model_Evaluator._find_earliest_classification(prediction)
@@ -276,7 +278,7 @@ class Model_Evaluator:
         plt.title(f'{output_files[1][0]}')
         plt.xlabel('Predicted')
         plt.ylabel('True')
-        plt.savefig(f"{output_files[1][1]}.png")
+        plt.savefig(f"{output_files[1][1]}")
         print('Confusion matrix plot written to', output_files[1][1])
 
         # get matthews correlation coefficient and save it to JSON
