@@ -133,11 +133,11 @@ class Model_Evaluator:
 
         # classifications mapped to their keywords
         classes_dictionary = {
-        'NTA': ['not the asshole', 'not the a\*\*hole', 'nta', 'you would not be the asshole', 'you would not be the a**hole', 'ywnbta', 'n t a', 'y w b t a'],
-        'NAH': ['no assholes here', 'no a\*\*holes here', 'nah', 'n a h'],
+        'NTA': ['not the asshole', 'not the a**hole', 'nta', 'you would not be the asshole', 'you would not be the a**hole', 'ywnbta', 'n t a', 'y w b t a'],
+        'NAH': ['no assholes here', 'no a**holes here', 'nah', 'n a h'],
         'ESH': ['everyone sucks here', 'esh', 'e s h'],
         'INFO': ['more information needed', 'more info needed', 'more information required', 'more info required', 'info'],
-        'YTA': ['you\'re the asshole', 'you\'re the a\*\*hole', 'youre the asshole', 'youre the a\*\*hole', 'yta', 'you would be the asshole', 'you would be the a\*\*hole', 'ywbta', 'y t a', 'y w b t a']
+        'YTA': ['you\'re the asshole', 'you\'re the a**hole', 'youre the asshole', 'youre the a**hole', 'yta', 'you would be the asshole', 'you would be the a**hole', 'ywbta', 'y t a', 'y w b t a']
         }
 
         # track earliest match
